@@ -18,37 +18,65 @@ output "private_subnet_ids" {
 }
 
 # =====================================================
+# S3 Bucket Outputs
+# =====================================================
+
+output "s3_bucket_id" {
+  description = "The S3 bucket name for web assets"
+  value       = module.web_assets_bucket.s3_bucket_id
+}
+
+output "s3_bucket_arn" {
+  description = "The S3 bucket ARN"
+  value       = module.web_assets_bucket.s3_bucket_arn
+}
+
+# =====================================================
+# IAM Role Outputs
+# =====================================================
+
+output "iam_role_1_name" {
+  description = "IAM Role 1 name (has S3 access)"
+  value       = module.nginx_web_role_1.name
+}
+
+output "iam_role_1_arn" {
+  description = "IAM Role 1 ARN (has S3 access)"
+  value       = module.nginx_web_role_1.arn
+}
+
+output "iam_role_2_name" {
+  description = "IAM Role 2 name (NO S3 access)"
+  value       = module.nginx_web_role_2.name
+}
+
+output "iam_role_2_arn" {
+  description = "IAM Role 2 ARN (NO S3 access)"
+  value       = module.nginx_web_role_2.arn
+}
+
+# =====================================================
 # EC2 Instance Outputs
 # =====================================================
 
-output "instance_id" {
-  description = "The ID of the EC2 instance"
-  value       = module.nginx_ec2_instance.id
+output "instance_ids" {
+  description = "Map of EC2 instance IDs"
+  value       = { for k, inst in module.nginx_ec2_instances : k => inst.id }
 }
 
-output "instance_public_ip" {
-  description = "The public IP address of the EC2 instance"
-  value       = module.nginx_ec2_instance.public_ip
+output "instance_public_ips" {
+  description = "Map of EC2 instance public IPs"
+  value       = { for k, inst in module.nginx_ec2_instances : k => inst.public_ip }
 }
 
-output "instance_private_ip" {
-  description = "The private IP address of the EC2 instance"
-  value       = module.nginx_ec2_instance.private_ip
+output "instance_private_ips" {
+  description = "Map of EC2 instance private IPs"
+  value       = { for k, inst in module.nginx_ec2_instances : k => inst.private_ip }
 }
 
-output "instance_arn" {
-  description = "The ARN of the EC2 instance"
-  value       = module.nginx_ec2_instance.arn
-}
-
-output "security_group_id" {
-  description = "The ID of the security group created for the instance"
-  value       = module.nginx_ec2_instance.security_group_id
-}
-
-output "nginx_url" {
-  description = "URL to access Nginx web server"
-  value       = "http://${module.nginx_ec2_instance.public_ip}"
+output "instance_urls" {
+  description = "Direct URLs to each Nginx server"
+  value       = { for k, inst in module.nginx_ec2_instances : k => "http://${inst.public_ip}" }
 }
 
 # =====================================================
@@ -61,21 +89,11 @@ output "elb_dns_name" {
 }
 
 output "elb_url" {
-  description = "URL to access Nginx via ELB"
+  description = "URL to access Nginx via ELB (Load Balanced)"
   value       = "http://${module.elb.elb_dns_name}"
 }
 
 output "elb_id" {
   description = "The ID of the ELB"
   value       = module.elb.elb_id
-}
-
-output "elb_arn" {
-  description = "The ARN of the ELB"
-  value       = module.elb.elb_arn
-}
-
-output "elb_zone_id" {
-  description = "The canonical hosted zone ID of the ELB"
-  value       = module.elb.elb_zone_id
 }
