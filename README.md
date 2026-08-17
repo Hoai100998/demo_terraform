@@ -30,15 +30,19 @@ terraform -chdir=bootstrap init
 terraform -chdir=bootstrap apply
 ```
 
-State của bootstrap được giữ local và bị Git ignore. Cần lưu file này ở nơi an toàn.
+Sau lần apply đầu tiên, copy `bootstrap/backend.hcl.example` thành `bootstrap/backend.hcl`, rồi migrate bootstrap state lên S3:
+
+```powershell
+terraform -chdir=bootstrap init -migrate-state -force-copy -backend-config backend.hcl
+```
 
 ## 2. Cấu hình và migrate state
 
 Trong từng environment, copy `backend.hcl.example` thành `backend.hcl`, thay bucket placeholder bằng bucket vừa tạo, rồi chạy:
 
 ```powershell
-terraform -chdir=environments/dev init -migrate-state -backend-config=backend.hcl
-terraform -chdir=environments/prod init -migrate-state -backend-config=backend.hcl
+terraform -chdir=environments/dev init -migrate-state -backend-config backend.hcl
+terraform -chdir=environments/prod init -migrate-state -backend-config backend.hcl
 ```
 
 Hai môi trường sử dụng hai S3 object key riêng và S3-native state locking.

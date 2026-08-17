@@ -1,6 +1,5 @@
 bucket       = "terraform-demo-tfstate-992382472914"
-key          = "terraform-demo/prod/terraform.tfstate"
+key          = "terraform-demo/bootstrap/terraform.tfstate"
 region       = "us-east-1"
 encrypt      = true
 use_lockfile = true
-
