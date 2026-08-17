@@ -1,70 +1,55 @@
 # Terraform AWS Demo
 
-Project Terraform để deploy hạ tầng web trên AWS môi trường Development.
+Project Terraform triển khai hạ tầng web trên AWS cho hai môi trường `dev` và `prod`. Source code được lưu trên GitHub; Terraform state được lưu trong S3 có mã hóa, versioning và state locking.
 
-## AWS Services đang sử dụng
+## AWS services
 
-| # | AWS Service | Mô tả |
-|---|-------------|-------|
-| 1 | **VPC (Virtual Private Cloud)** | Mạng riêng trên AWS, bao gồm public/private subnets, route tables, NAT Gateway, DNS support |
-| 2 | **EC2 (Elastic Compute Cloud)** | 2 instances chạy Nginx web server, mỗi instance ở một Availability Zone khác nhau (us-east-1a, us-east-1b) |
-| 3 | **S3 (Simple Storage Service)** | Bucket lưu trữ web assets, có versioning, encryption (AES256), lifecycle rules (chuyển sang Glacier sau 90 ngày) |
-| 4 | **IAM (Identity and Access Management)** | 2 IAM Roles: Role 1 (SSM + S3 access) cho EC2-1, Role 2 (SSM only) cho EC2-2 |
-| 5 | **Security Groups** | Firewalls cho EC2 instances (HTTP, HTTPS, SSH) và ELB (HTTP, HTTPS ingress; HTTP egress đến backends) |
-| 6 | **ELB (Elastic Load Balancer)** | Classic Load Balancer phân phối traffic đến 2 Nginx servers, có health check HTTP:80/ |
-| 7 | **VPC Endpoint** | Gateway Endpoint cho S3, cho phép truy cập S3 từ VPC mà không cần ra Internet |
-| 8 | **NAT Gateway** | Cho phép EC2 ở private subnet kết nối ra Internet một cách bảo mật |
+- VPC, public/private subnets, route tables và NAT Gateway.
+- EC2 chạy Nginx; môi trường dev có hai instance ở hai Availability Zone.
+- IAM roles và instance profiles cho EC2.
+- S3 bucket cho web assets và một S3 bucket riêng cho Terraform state.
+- Security Groups và VPC Endpoint cho S3.
 
-## Kiến trúc
+ELB đã được loại bỏ. Nginx hiện được truy cập trực tiếp qua public IP của EC2.
 
-```
-                    Internet
-                        │
-                        ▼
-              ┌───────────────┐
-              │    ELB        │  (Classic Load Balancer)
-              │  Port 80/443  │
-              └───────┬───────┘
-                      │
-        ┌─────────────┴─────────────┐
-        ▼                           ▼
-┌──────────────────┐      ┌──────────────────┐
-│   EC2 Instance 1 │      │   EC2 Instance 2 │
-│  Nginx Server    │      │  Nginx Server    │
-│  AZ us-east-1a   │      │  AZ us-east-1b   │
-│  IAM Role 1      │      │  IAM Role 2      │
-│  S3 Access: YES  │      │  S3 Access: NO   │
-└──────────────────┘      └──────────────────┘
-        │                           │
-        └─────────┬─────────────────┘
-                  ▼
-          ┌──────────────┐
-          │   AWS S3     │
-          │  Web Assets  │
-          └──────────────┘
+## Cấu trúc chính
+
+```text
+bootstrap/          # Tạo S3 bucket lưu Terraform state
+environments/dev/   # Hạ tầng môi trường development
+environments/prod/  # Hạ tầng môi trường production
+modules/            # Các Terraform module dùng chung
 ```
 
-## Cấu trúc module
+## 1. Tạo state bucket một lần
 
-```
-modules/
-├── terraform-aws-vpc/          # VPC, subnets, route tables, NAT Gateway
-├── terraform-aws-ec2-instance/ # EC2 instances với user data, security group, IAM role
-├── terraform-aws-elb/          # Classic Load Balancer
-├── terraform-aws-iam/          # IAM Roles, instance profiles, inline policies
-├── terraform-aws-s3-bucket/    # S3 bucket với versioning, encryption, lifecycle
-└── terraform-aws-security-group/ # Security Groups (firewall rules)
+Chọn một bucket name duy nhất trên toàn AWS, copy `bootstrap/terraform.tfvars.example` thành `bootstrap/terraform.tfvars`, cập nhật giá trị rồi chạy:
+
+```powershell
+terraform -chdir=bootstrap init
+terraform -chdir=bootstrap apply
 ```
 
-## Cách deploy
+State của bootstrap được giữ local và bị Git ignore. Cần lưu file này ở nơi an toàn.
 
-```bash
-# Khởi tạo Terraform
-cd environments/dev
-terraform init
+## 2. Cấu hình và migrate state
 
-# Xem plan
-terraform plan
+Trong từng environment, copy `backend.hcl.example` thành `backend.hcl`, thay bucket placeholder bằng bucket vừa tạo, rồi chạy:
 
-# Apply deploy
-terraform apply
+```powershell
+terraform -chdir=environments/dev init -migrate-state -backend-config=backend.hcl
+terraform -chdir=environments/prod init -migrate-state -backend-config=backend.hcl
+```
+
+Hai môi trường sử dụng hai S3 object key riêng và S3-native state locking.
+
+## 3. Deploy
+
+Ví dụ với môi trường dev:
+
+```powershell
+terraform -chdir=environments/dev plan
+terraform -chdir=environments/dev apply
+```
+
+Không commit `.tfstate`, `.terraform/`, `.env`, credentials, `backend.hcl` hoặc file `*.tfvars` thực tế lên GitHub. Các file `.terraform.lock.hcl` nên được commit để cố định dependency versions.

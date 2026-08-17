@@ -8,9 +8,9 @@ module "vpc" {
   name = var.vpc_name
   cidr = var.vpc_cidr
 
-  azs              = var.availability_zones
-  public_subnets   = var.public_subnets
-  private_subnets  = var.private_subnets
+  azs             = var.availability_zones
+  public_subnets  = var.public_subnets
+  private_subnets = var.private_subnets
 
   enable_dns_hostnames = true
   enable_dns_support   = true
@@ -21,7 +21,6 @@ module "vpc" {
 
   tags = var.common_tags
 }
-
 # =====================================================
 # IAM Role 1 - EC2 Instance 1 (SSM + S3 Full Access via Inline Policy)
 # =====================================================
@@ -44,7 +43,7 @@ module "nginx_web_role_1" {
   inline_policy_permissions = {
     # SID must be alphanumeric only [0-9A-Za-z]* — no underscores!
     s3full = {
-      effect  = "Allow"
+      effect = "Allow"
       actions = [
         "s3:GetObject",
         "s3:ListBucket",
@@ -187,7 +186,7 @@ locals {
     ip_protocol = "tcp"
     cidr_ipv4   = ip
     description = "Allow SSH from ${ip}"
-  }}
+  } }
 }
 
 module "nginx_ec2_instances" {
@@ -291,92 +290,3 @@ module "nginx_ec2_instances" {
   })
 }
 
-# =====================================================
-# Security Group for Public ELB
-# =====================================================
-
-module "elb_security_group" {
-  source = "../../modules/terraform-aws-security-group"
-
-  name        = "${var.vpc_name}-elb-sg"
-  description = "Security group for public ELB"
-  vpc_id      = module.vpc.vpc_id
-
-  ingress_rules = {
-    http = {
-      from_port   = 80
-      to_port     = 80
-      ip_protocol = "tcp"
-      cidr_ipv4   = "0.0.0.0/0"
-      description = "Allow HTTP traffic from anywhere"
-    }
-    https = {
-      from_port   = 443
-      to_port     = 443
-      ip_protocol = "tcp"
-      cidr_ipv4   = "0.0.0.0/0"
-      description = "Allow HTTPS traffic from anywhere"
-    }
-  }
-
-  # Egress: restrict to only port 80 within VPC
-  egress_rules = {
-    http_to_backends = {
-      ip_protocol = "tcp"
-      to_port     = 80
-      cidr_ipv4   = var.vpc_cidr
-      description = "Allow HTTP to backend EC2 instances in VPC"
-    }
-  }
-
-  tags = var.common_tags
-}
-
-# =====================================================
-# ELB Module - Classic Load Balancer for 2 Nginx Servers
-# NOTE: Classic ELB is deprecated. Consider migrating to ALB.
-# =====================================================
-
-module "elb" {
-  source = "../../modules/terraform-aws-elb"
-
-  name = "${var.vpc_name}-elb"
-
-  # Subnets: place ELB in public subnets (both AZs for HA)
-  subnets = module.vpc.public_subnets
-
-  # Security Group for ELB
-  security_groups = [module.elb_security_group.id]
-
-  # Listener: forward HTTP on port 80 to Nginx on port 80
-  listener = [
-    {
-      instance_port     = 80
-      instance_protocol = "http"
-      lb_port           = 80
-      lb_protocol       = "http"
-    }
-  ]
-
-  # Health Check: check Nginx on port 80
-  health_check = {
-    target              = "HTTP:80/"
-    healthy_threshold   = 3
-    unhealthy_threshold = 3
-    timeout             = 5
-    interval            = 30
-  }
-
-  # Attach 2 EC2 instances to ELB
-  number_of_instances = length(local.instances)
-  instances           = [for inst in module.nginx_ec2_instances : inst.id]
-
-  # ELB settings
-  internal                 = false
-  cross_zone_load_balancing = true
-  idle_timeout             = 60
-  connection_draining      = true
-  connection_draining_timeout = 300
-
-  tags = var.common_tags
-}

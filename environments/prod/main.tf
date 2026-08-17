@@ -8,9 +8,9 @@ module "vpc" {
   name = var.vpc_name
   cidr = var.vpc_cidr
 
-  azs              = var.availability_zones
-  public_subnets   = var.public_subnets
-  private_subnets  = var.private_subnets
+  azs             = var.availability_zones
+  public_subnets  = var.public_subnets
+  private_subnets = var.private_subnets
 
   enable_dns_hostnames = true
   enable_dns_support   = true
@@ -21,7 +21,6 @@ module "vpc" {
 
   tags = var.common_tags
 }
-
 # =====================================================
 # EC2 Instance Module - Nginx Web Server
 # =====================================================
@@ -120,49 +119,3 @@ module "nginx_ec2_instance" {
   tags = var.common_tags
 }
 
-# =====================================================
-# ELB Module - Application Load Balancer for Nginx
-# =====================================================
-
-module "elb" {
-  source = "../../modules/terraform-aws-elb"
-
-  name = "${var.vpc_name}-elb"
-
-  # Subnets - place ELB in public subnets
-  subnets = module.vpc.public_subnets
-
-  # Security Group for ELB
-  security_groups = [module.nginx_ec2_instance.security_group_id]
-
-  # Listener - forward HTTP traffic on port 80 to Nginx on port 80
-  listener = [
-    {
-      instance_port     = 80
-      instance_protocol = "http"
-      lb_port           = 80
-      lb_protocol       = "http"
-    }
-  ]
-
-  # Health Check - check Nginx on port 80
-  health_check = {
-    target              = "HTTP:80/"
-    healthy_threshold   = 3
-    unhealthy_threshold = 3
-    timeout             = 5
-    interval            = 30
-  }
-
-  # Attach EC2 instance to ELB
-  instances = [module.nginx_ec2_instance.id]
-
-  # ELB settings
-  internal                  = false
-  cross_zone_load_balancing = true
-  idle_timeout              = 60
-  connection_draining       = true
-  connection_draining_timeout = 300
-
-  tags = var.common_tags
-}

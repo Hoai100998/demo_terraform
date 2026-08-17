@@ -50,32 +50,3 @@ output "nginx_url" {
   description = "URL to access Nginx web server"
   value       = "http://${module.nginx_ec2_instance.public_ip}"
 }
-
-# =====================================================
-# ELB Outputs
-# =====================================================
-
-output "elb_dns_name" {
-  description = "The DNS name of the ELB"
-  value       = module.elb.elb_dns_name
-}
-
-output "elb_url" {
-  description = "URL to access Nginx via ELB"
-  value       = "http://${module.elb.elb_dns_name}"
-}
-
-output "elb_id" {
-  description = "The ID of the ELB"
-  value       = module.elb.elb_id
-}
-
-output "elb_arn" {
-  description = "The ARN of the ELB"
-  value       = module.elb.elb_arn
-}
-
-output "elb_zone_id" {
-  description = "The canonical hosted zone ID of the ELB"
-  value       = module.elb.elb_zone_id
-}

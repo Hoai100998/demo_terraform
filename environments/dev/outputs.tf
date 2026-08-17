@@ -78,22 +78,3 @@ output "instance_urls" {
   description = "Direct URLs to each Nginx server"
   value       = { for k, inst in module.nginx_ec2_instances : k => "http://${inst.public_ip}" }
 }
-
-# =====================================================
-# ELB Outputs
-# =====================================================
-
-output "elb_dns_name" {
-  description = "The DNS name of the ELB"
-  value       = module.elb.elb_dns_name
-}
-
-output "elb_url" {
-  description = "URL to access Nginx via ELB (Load Balanced)"
-  value       = "http://${module.elb.elb_dns_name}"
-}
-
-output "elb_id" {
-  description = "The ID of the ELB"
-  value       = module.elb.elb_id
-}
