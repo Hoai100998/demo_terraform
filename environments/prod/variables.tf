@@ -5,7 +5,7 @@
 variable "aws_region" {
   description = "AWS region to deploy resources"
   type        = string
-  default     = "ap-southeast-1"
+  default     = "us-east-2"
 }
 
 # =====================================================
@@ -27,7 +27,7 @@ variable "vpc_cidr" {
 variable "availability_zones" {
   description = "Availability zones to deploy resources"
   type        = list(string)
-  default     = ["ap-southeast-1a", "ap-southeast-1b", "ap-southeast-1c"]
+  default     = ["us-east-2a", "us-east-2b", "us-east-2c"]
 }
 
 variable "public_subnets" {
@@ -65,9 +65,9 @@ variable "instance_name" {
 }
 
 variable "ami" {
-  description = "ID of AMI to use for the instance"
+  description = "Optional AMI ID; null uses the latest Amazon Linux 2023 AMI from AWS SSM"
   type        = string
-  default     = "ami-08f44e8eca9095668"
+  default     = null
 }
 
 variable "instance_type" {

@@ -45,7 +45,7 @@ module "nginx_ec2_instance" {
               systemctl start nginx
               systemctl enable nginx
               # Create a welcome page
-              cat > /var/www/html/index.html << 'HTML'
+              cat > /usr/share/nginx/html/index.html << 'HTML'
               <!DOCTYPE html>
               <html>
               <head>
